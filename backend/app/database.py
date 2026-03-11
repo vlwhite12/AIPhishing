@@ -20,28 +20,26 @@ from app.config import get_settings
 
 settings = get_settings()
 
-# ── Engine ────────────────────────────────────────────────────────────────────
-# SQLite needs check_same_thread=False when used with async drivers.
-# Pool size settings are omitted — SQLite uses a single-file connection.
-engine = create_async_engine(
-    settings.database_url,
-    echo=not settings.is_production,
-    connect_args={
-        "check_same_thread": False,
-        "timeout": 30,
-    },
-    # Single shared connection for SQLite — avoids cross-thread lock contention
-    poolclass=StaticPool,
-)
+_is_sqlite = settings.database_url.startswith("sqlite")
 
-# Enable WAL mode: allows concurrent reads alongside writes, eliminating
-# "database is locked" errors when long AI requests hold open sessions.
-@event.listens_for(engine.sync_engine, "connect")
-def _set_wal_mode(dbapi_conn, _):
-    cursor = dbapi_conn.cursor()
-    cursor.execute("PRAGMA journal_mode=WAL")
-    cursor.execute("PRAGMA synchronous=NORMAL")  # Safe + faster than FULL
-    cursor.close()
+# ── Engine ────────────────────────────────────────────────────────────────────
+# SQLite needs check_same_thread=False and StaticPool for async. PostgreSQL
+# uses asyncpg's default pool — do not pass SQLite-specific args there.
+_engine_kwargs: dict = {"echo": not settings.is_production}
+if _is_sqlite:
+    _engine_kwargs["connect_args"] = {"check_same_thread": False, "timeout": 30}
+    _engine_kwargs["poolclass"] = StaticPool
+
+engine = create_async_engine(settings.database_url, **_engine_kwargs)
+
+# Enable WAL mode for SQLite: allows concurrent reads alongside writes.
+if _is_sqlite:
+    @event.listens_for(engine.sync_engine, "connect")
+    def _set_wal_mode(dbapi_conn, _):
+        cursor = dbapi_conn.cursor()
+        cursor.execute("PRAGMA journal_mode=WAL")
+        cursor.execute("PRAGMA synchronous=NORMAL")  # Safe + faster than FULL
+        cursor.close()
 
 # ── Session Factory ───────────────────────────────────────────────────────────
 AsyncSessionLocal = async_sessionmaker(
