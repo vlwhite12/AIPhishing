@@ -72,8 +72,22 @@ limiter = Limiter(key_func=_get_user_identifier)
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """Runs on startup and shutdown."""
     logger.info("PhishCatch AI backend starting up (env=%s)", settings.app_env)
-    # Warm up Ollama: send a tiny request so the model is loaded into RAM
-    # before the first real user scan. Failures are silently ignored.
+
+    # Run database migrations at startup so the app always starts regardless
+    # of whether alembic is run as a pre-command.
+    try:
+        import subprocess, sys
+        result = subprocess.run(
+            [sys.executable, "-m", "alembic", "upgrade", "head"],
+            capture_output=True, text=True, timeout=60
+        )
+        if result.returncode == 0:
+            logger.info("Alembic migrations applied successfully.")
+        else:
+            logger.error("Alembic migration failed:\n%s", result.stderr)
+    except Exception as exc:
+        logger.error("Alembic migration error: %s", exc)
+
     # Warm up Ollama only when not in rule-based-only mode
     if settings.openai_base_url and not settings.rule_based_only:
         import asyncio
