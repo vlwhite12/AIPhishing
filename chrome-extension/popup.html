@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <!--
+    Tailwind CDN cannot be used in MV3 extensions — the default extension-page
+    CSP enforces `script-src 'self'`, which blocks external scripts entirely.
+    Chrome will also reject any manifest that tries to loosen this restriction.
+    popup.css provides the equivalent styles as a self-hosted stylesheet.
+  -->
+  <link rel="stylesheet" href="popup.css" />
+  <title>PhishCatch AI</title>
+</head>
+<body>
+
+  <!-- ── Header ──────────────────────────────────────────────────────────── -->
+  <header class="header">
+    <div class="logo">
+      <!-- Shield + exclamation icon (inline SVG, no external requests) -->
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"
+           viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+           class="logo-icon" aria-hidden="true">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+        <line x1="12" y1="8" x2="12" y2="12"/>
+        <circle cx="12" cy="16" r="0.5" fill="currentColor"/>
+      </svg>
+      <span>PhishCatch AI</span>
+    </div>
+    <!-- Hidden until a user is signed in -->
+    <button id="btn-logout" class="btn-ghost" hidden>Sign out</button>
+  </header>
+
+  <!-- ── View: checking auth ──────────────────────────────────────────────── -->
+  <div id="view-loading" class="view view-center" hidden>
+    <div class="spinner-lg" role="status" aria-label="Loading"></div>
+    <p class="text-muted">Loading…</p>
+  </div>
+
+  <!-- ── View: sign-in form ───────────────────────────────────────────────── -->
+  <div id="view-login" class="view" hidden>
+    <p class="view-subtitle">Sign in to your PhishCatch account.</p>
+    <form id="form-login" novalidate>
+      <div class="field">
+        <label for="input-email">Email</label>
+        <input id="input-email" type="email" autocomplete="email"
+               placeholder="you@example.com" required />
+      </div>
+      <div class="field">
+        <label for="input-password">Password</label>
+        <input id="input-password" type="password" autocomplete="current-password"
+               placeholder="••••••••" required />
+      </div>
+      <div id="login-error" class="error-banner" hidden role="alert"></div>
+      <button id="btn-login" type="submit" class="btn-primary btn-full">
+        <span id="btn-login-label">Sign in</span>
+        <span id="btn-login-spinner" class="spinner" hidden aria-hidden="true"></span>
+      </button>
+    </form>
+  </div>
+
+  <!-- ── View: ready to analyse ───────────────────────────────────────────── -->
+  <div id="view-analyze" class="view" hidden>
+    <p class="view-subtitle">
+      Open an email in Gmail, then click the button below to analyse it.
+    </p>
+    <div id="analyze-error" class="error-banner" hidden role="alert"></div>
+    <button id="btn-analyze" class="btn-primary btn-full">
+      <!-- Magnifying-glass icon -->
+      <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15"
+           viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
+           aria-hidden="true">
+        <circle cx="11" cy="11" r="8"/>
+        <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      </svg>
+      <span id="btn-analyze-label">Analyse This Email</span>
+      <span id="btn-analyze-spinner" class="spinner" hidden aria-hidden="true"></span>
+    </button>
+  </div>
+
+  <!-- ── View: analysis results ───────────────────────────────────────────── -->
+  <div id="view-results" class="view" hidden>
+
+    <!-- Semicircular risk-score arc -->
+    <div class="score-section" aria-label="Risk score">
+      <svg viewBox="0 0 200 115" width="190" height="109" class="arc-svg"
+           aria-hidden="true">
+        <!-- Track (background arc) -->
+        <path d="M 20 100 A 80 80 0 0 1 180 100"
+              fill="none" stroke="#1e293b" stroke-width="14"
+              stroke-linecap="round"/>
+        <!-- Fill (driven by popup.js; starts invisible) -->
+        <path id="arc-fill"
+              d="M 20 100 A 80 80 0 0 1 180 100"
+              fill="none" stroke="#3b82f6" stroke-width="14"
+              stroke-linecap="round"
+              stroke-dasharray="0 251.33"/>
+      </svg>
+      <!-- Score overlay centred over the arc baseline -->
+      <div class="score-overlay">
+        <span id="score-number" class="score-number">—</span>
+        <span class="score-denom">/ 100</span>
+      </div>
+    </div>
+
+    <!-- Risk level text badge -->
+    <div id="risk-badge" class="risk-badge">—</div>
+
+    <!-- AI summary -->
+    <div class="result-section">
+      <h3 class="section-label">Summary</h3>
+      <p id="result-summary" class="result-body"></p>
+    </div>
+
+    <!-- Red flags list (hidden when empty) -->
+    <div id="red-flags-section" class="result-section" hidden>
+      <h3 class="section-label">Red Flags</h3>
+      <ul id="red-flags-list" class="flag-list"></ul>
+    </div>
+
+    <!-- Footer action -->
+    <div class="result-footer">
+      <button id="btn-new-scan" class="btn-secondary btn-full">
+        Analyse Another Email
+      </button>
+    </div>
+  </div>
+
+  <!--
+    Must be last — MV3 CSP requires all scripts to be external files
+    (no inline <script> blocks or on* attributes).
+  -->
+  <script src="popup.js"></script>
+</body>
+</html>
