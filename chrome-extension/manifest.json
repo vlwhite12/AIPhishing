@@ -12,7 +12,7 @@
 
   "host_permissions": [
     "https://mail.google.com/*",
-    "http://localhost:8000/*"
+    "https://aiphishing-production.up.railway.app/*"
   ],
 
   "background": {

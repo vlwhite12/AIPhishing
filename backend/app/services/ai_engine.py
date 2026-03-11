@@ -201,6 +201,10 @@ class PhishingAnalysisEngine:
         user_prompt = build_user_prompt(clean_text)
 
         # ── Step 3: Call the LLM (with rule-based fallback on quota exhaustion) ──
+        if self._settings.rule_based_only:
+            logger.info("Rule-based-only mode enabled — skipping LLM.")
+            return rule_based_analyse(clean_text)
+
         try:
             raw_json_str = await self._call_openai(user_prompt)
         except _QuotaExhaustedError:

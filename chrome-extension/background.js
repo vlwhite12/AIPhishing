@@ -23,8 +23,8 @@
  */
 
 // ── Configuration ─────────────────────────────────────────────────────────────
-// Update this when you deploy the backend to production.
-const API_BASE = "http://localhost:8000";
+// TODO: replace with your actual Railway URL after deploying
+const API_BASE = "https://aiphishing-production.up.railway.app";
 
 // ── Message router ────────────────────────────────────────────────────────────
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
