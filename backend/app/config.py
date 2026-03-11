@@ -39,6 +39,8 @@ class Settings(BaseSettings):
     openai_base_url: str = "http://localhost:11434/v1"
     # Set to true to skip the LLM entirely and always use the rule-based engine
     rule_based_only: bool = False
+    # Comma-separated allowed hostnames for TrustedHostMiddleware (optional)
+    trusted_hosts: str = ""
     anthropic_api_key: str = ""
     anthropic_model: str = "claude-3-5-sonnet-20241022"
 

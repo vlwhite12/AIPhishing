@@ -74,7 +74,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     logger.info("PhishCatch AI backend starting up (env=%s)", settings.app_env)
     # Warm up Ollama: send a tiny request so the model is loaded into RAM
     # before the first real user scan. Failures are silently ignored.
-    if settings.openai_base_url:
+    # Warm up Ollama only when not in rule-based-only mode
+    if settings.openai_base_url and not settings.rule_based_only:
         import asyncio
         async def _warmup():
             try:
@@ -133,11 +134,12 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(SlowAPIMiddleware)
 
 # ── Trusted Host (production hardening) ──────────────────────────────────────
-if settings.is_production:
-    # Prevent Host header injection attacks. Adjust to your actual hostname(s).
+# Only enable if a custom domain is configured — Railway's generated domains
+# change per deploy so we skip this check there.
+if settings.is_production and settings.trusted_hosts:
     app.add_middleware(
         TrustedHostMiddleware,
-        allowed_hosts=["phishcatch.yourdomain.com", "api.phishcatch.yourdomain.com"],
+        allowed_hosts=[h.strip() for h in settings.trusted_hosts.split(",")],
     )
 
 # ── Routers ───────────────────────────────────────────────────────────────────
