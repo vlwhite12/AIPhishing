@@ -10,7 +10,7 @@
  *  2. Sets the lightweight session hint cookie for Next.js middleware.
  *  3. Redirects to the callbackUrl (if present) or /dashboard.
  */
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -33,9 +33,9 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>;
 
-// ── Component ──────────────────────────────────────────────────────────────
+// ── Inner component (uses useSearchParams) ─────────────────────────────────
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl") ?? "/dashboard";
@@ -168,5 +168,15 @@ export default function LoginPage() {
         </Link>
       </p>
     </>
+  );
+}
+
+// ── Page export wrapped in Suspense (required for useSearchParams) ──────────
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
   );
 }
