@@ -73,13 +73,17 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """Runs on startup and shutdown."""
     logger.info("PhishCatch AI backend starting up (env=%s)", settings.app_env)
 
-    # Run database migrations at startup so the app always starts regardless
-    # of whether alembic is run as a pre-command.
+    # Run database migrations in a thread so the event loop stays free to
+    # respond to healthcheck requests while migrations execute.
     try:
-        import subprocess, sys
-        result = subprocess.run(
-            [sys.executable, "-m", "alembic", "upgrade", "head"],
-            capture_output=True, text=True, timeout=60
+        import asyncio, subprocess, sys
+        loop = asyncio.get_event_loop()
+        result = await loop.run_in_executor(
+            None,
+            lambda: subprocess.run(
+                [sys.executable, "-m", "alembic", "upgrade", "head"],
+                capture_output=True, text=True, timeout=60,
+            ),
         )
         if result.returncode == 0:
             logger.info("Alembic migrations applied successfully.")
