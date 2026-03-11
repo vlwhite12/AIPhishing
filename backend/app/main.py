@@ -73,41 +73,17 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """Runs on startup and shutdown."""
     logger.info("PhishCatch AI backend starting up (env=%s)", settings.app_env)
 
-    # Run database migrations in a thread so the event loop stays free to
-    # respond to healthcheck requests while migrations execute.
+    # Create database tables directly — works for both SQLite and PostgreSQL
+    # without needing alembic subprocess or correct working directory.
     try:
-        import asyncio, subprocess, sys
-        loop = asyncio.get_event_loop()
-        result = await loop.run_in_executor(
-            None,
-            lambda: subprocess.run(
-                [sys.executable, "-m", "alembic", "upgrade", "head"],
-                capture_output=True, text=True, timeout=60,
-            ),
-        )
-        if result.returncode == 0:
-            logger.info("Alembic migrations applied successfully.")
-        else:
-            logger.error("Alembic migration failed:\n%s", result.stderr)
+        from app.database import engine, Base
+        import app.models  # noqa: F401 — ensure all models are registered
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        logger.info("Database tables ready.")
     except Exception as exc:
-        logger.error("Alembic migration error: %s", exc)
+        logger.error("Database setup error: %s", exc)
 
-    # Warm up Ollama only when not in rule-based-only mode
-    if settings.openai_base_url and not settings.rule_based_only:
-        import asyncio
-        async def _warmup():
-            try:
-                engine = get_ai_engine()
-                await engine._client.chat.completions.create(
-                    model=settings.openai_model,
-                    messages=[{"role": "user", "content": "hi"}],
-                    max_tokens=1,
-                    timeout=30.0,
-                )
-                logger.info("Ollama warmup complete — model loaded into RAM.")
-            except Exception as exc:
-                logger.warning("Ollama warmup skipped: %s", exc)
-        asyncio.create_task(_warmup())
     yield
     logger.info("PhishCatch AI backend shutting down.")
 
